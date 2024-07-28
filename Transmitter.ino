@@ -1,43 +1,62 @@
-#define RX_pin 5
-int pos = 0; // Index for postion of bit in a character
-unsigned char CH = 0; // Character in the receiving string
-unsigned int bits1 = 0; // Variable to count the length of frequency (in not any particular unit)
-boolean capture = false; // HIGH if the received signal hods string else LOW
+#define TX_pin 3 // Connect transducer at pin no. 3
+String stringVariable1;
+int count = 0;
+int NoOfTimesToSend = 5;
 
-void setup() 
+void setup()
 {
-   Serial.begin(9600); // Set the serial monitor to 115200 baud rate
-   pinMode(RX_pin, INPUT_PULLUP); // Configure RX_pin to PULLUP resistro 
+  Serial.begin(9600); // set serial monitor baud rate at 15200
+  pinMode(TX_pin, OUTPUT); 
+}
+void loop()
+{
+  String stringVariable = Serial.readString();
+  if(stringVariable !=""){
+    count = 0;
+  stringVariable1 = stringVariable;
+  }
+if(stringVariable1 !="" && count < NoOfTimesToSend){
+  count++;
+  Serial.println(stringVariable1);
+  send(stringVariable1 + "\n");
+}else{
+  count=0;
+    while (Serial.available() == 0) {
+  }
 }
 
-void loop() 
+  // send("AC project ho gya kaam khtm!!!\n"); // Write the message to send in the function argument as string
+}
+
+void send(String msg)
 {
-   if(digitalRead(RX_pin)) // When RX_pin is HIGH execute
-   {
-      bits1 = 0;
-      unsigned long deltaT = millis(); // Returns the number of milliseconds passed since the Arduino board began running the current program
-      // Wait for 10 millisecond and record the no. of time for which the RX_pin goes high during that period
-      while(millis()-deltaT <= 10) if(digitalRead(RX_pin)) bits1 ++;
-      //Serial.println(bits1); 
-      if(capture)
+  byte ch;
+  unsigned int pos = 0; // to store position of byte in string
+  unsigned int sz = msg.length(); // size of string
+  while (pos < sz) // untill the string is fully tavarsed
+  {
+    ch = msg.charAt(pos); // Access the character at pos in msg string
+    Serial.print((char)ch);
+    tone(TX_pin, 40000); // Generate a 40k Hz sound wave for 10 milliseconds 
+    delay(10);
+    noTone(TX_pin); // Stop generating the sound
+    for (int i = 0; i < 8; i++) // Traverse each bit of a character
+    {
+      bool b; // Variable to store bit 
+      b = bitRead(ch, 7 - i); // Returns if the bit at ith position is HIGH (1) or LOW (0)
+      if (b) // IF the bit is ONE send 2 millisecond sound of 4k Hz
       {
-         boolean b = 0; // temp variable to store bit info of the signal
-         if(bits1 > 290 && bits1 < 600) b = 0;
-         if(bits1 > 20 && bits1 < 290) b = 1;
-         if(b) bitSet(CH,7-pos); else bitClear(CH,7-pos); // set and reset the bits in the character from lSV
-         //Serial.print(b);
-         pos++;
-         if(pos == 8) // After writing character finished print it
-         {
-            Serial.print((char)CH);
-            pos = 0;
-            capture = false;
-         }
+        tone(TX_pin, 40000);
+        delay(2);
       }
-      if(bits1 > 600)
+      else // If the bit is ZERO send 4 millisecond sound of 4k Hz
       {
-         capture = true;
-         pos = 0;
+        tone(TX_pin, 40000);
+        delay(4);
       }
-   }
+      noTone(TX_pin);// After sending a character, send nothing for 11 milliseconds
+      delay(11);
+    }
+    pos++; // Go to next character in the string
+  }
 }
